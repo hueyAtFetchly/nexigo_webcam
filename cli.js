@@ -97,10 +97,11 @@ function renderMenu() {
   W(bold('  NexiGo N680E — Webcam Control\n'));
   W(dim('  ────────────────────────────\n\n'));
   W('  ' + cyan('1') + '  Set existing profile\n');
-  W('  ' + cyan('2') + '  Create new profile\n');
-  W('  ' + cyan('3') + '  Delete a profile\n');
-  W('  ' + cyan('4') + '  Reset to default\n');
-  W('  ' + cyan('5') + '  Quit  ' + dim('(or Q)') + '\n\n');
+  W('  ' + cyan('2') + '  Edit existing profile\n');
+  W('  ' + cyan('3') + '  Create new profile\n');
+  W('  ' + cyan('4') + '  Delete a profile\n');
+  W('  ' + cyan('5') + '  Reset to default\n');
+  W('  ' + cyan('6') + '  Quit  ' + dim('(or Q)') + '\n\n');
   W(dim('  Choose an option: '));
 }
 
@@ -203,21 +204,13 @@ async function adjustControl(index, c) {
   }
 }
 
-async function createProfile(index) {
-  clear();
-  W(bold('  Create new profile\n'));
-  W(dim('  ────────────────────────────\n\n'));
-  const name = await promptText('  Profile name: ');
-  if (!name) { return; } // cancelled
-  const existing = loadProfiles();
-  if (name in existing) {
-    W(dim(`\n  "${name}" already exists — saving will overwrite it.\n`));
-  }
-
-  // setting-selection loop
+// Shared editor for both Create and Edit: pick a setting, adjust it live, save/cancel.
+// `isNew` only changes the on-screen wording.
+async function runProfileEditor(index, name, isNew) {
+  const verb = isNew ? 'Create' : 'Edit';
   for (;;) {
     clear();
-    W(bold(`  Create "${name}" — pick a setting to adjust\n`));
+    W(bold(`  ${verb} "${name}" — pick a setting to adjust\n`));
     W(dim('  ────────────────────────────\n\n'));
     CONTROLS.forEach((c, i) => {
       const snap = controlSnapshot(index, c);
@@ -227,15 +220,21 @@ async function createProfile(index) {
     W(dim('\n  Choose: '));
 
     const { str, key } = await nextKey();
-    if (key && key.name === 'escape') { return cancelCreate(index); }
-    if (str && /[qQ]/.test(str)) { return cancelCreate(index); }
+    if ((key && key.name === 'escape') || (str && /[qQ]/.test(str))) {
+      resetAll(index);
+      clear();
+      W(bold(`  ${verb} profile\n\n`));
+      W(dim('  Cancelled. Camera returned to default.\n'));
+      await pause();
+      return;
+    }
     if (str && /[sS]/.test(str)) {
       const profiles = loadProfiles();
       profiles[name] = captureProfile(index);
       saveProfiles(profiles);
       resetAll(index);
       clear();
-      W(bold('  Create new profile\n\n'));
+      W(bold(`  ${verb} profile\n\n`));
       W(green(`  Saved "${name}".\n`));
       W('  To use this profile choose existing profile option in CLI.\n');
       W(dim('  (camera returned to default)\n'));
@@ -249,12 +248,24 @@ async function createProfile(index) {
   }
 }
 
-async function cancelCreate(index) {
-  resetAll(index);
+async function createProfile(index) {
   clear();
-  W(bold('  Create new profile\n\n'));
-  W(dim('  Cancelled. Camera returned to default.\n'));
-  await pause();
+  W(bold('  Create new profile\n'));
+  W(dim('  ────────────────────────────\n\n'));
+  const name = await promptText('  Profile name: ');
+  if (!name) { return; } // cancelled
+  if (name in loadProfiles()) {
+    W(dim(`\n  "${name}" already exists — saving will overwrite it.\n`));
+  }
+  resetAll(index); // start a new profile from a clean, balanced camera
+  await runProfileEditor(index, name, true);
+}
+
+async function editProfile(index) {
+  const choice = await chooseProfile(index, 'Edit existing profile');
+  if (!choice) return;
+  applyProfile(index, choice.profile); // load saved settings onto the live camera first
+  await runProfileEditor(index, choice.name, false);
 }
 
 // ---- main loop -------------------------------------------------------------
@@ -275,10 +286,11 @@ async function main() {
     if (str && /[qQ]/.test(str)) { cleanupAndExit(0); }
     switch (str) {
       case '1': await setExistingProfile(index); break;
-      case '2': await createProfile(index); break;
-      case '3': await deleteProfile(index); break;
-      case '4': await resetDefault(index); break;
-      case '5': cleanupAndExit(0); break;
+      case '2': await editProfile(index); break;
+      case '3': await createProfile(index); break;
+      case '4': await deleteProfile(index); break;
+      case '5': await resetDefault(index); break;
+      case '6': cleanupAndExit(0); break;
       default: break; // ignore unknown keys
     }
   }
