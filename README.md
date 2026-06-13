@@ -36,8 +36,15 @@ That opens an interactive menu:
 - **Reset** — choose `5` to return the live camera to default.
 - **Quit** — choose `6` or press **Q**.
 
-Profiles are saved in `profiles.json` (ignored by git). Camera settings reset
-when the webcam loses power, so just reload your profile after replugging.
+Your profiles are saved in `profiles.json` (ignored by git). Camera settings
+reset when the webcam loses power, so just reload your profile after replugging.
+
+### Built-in profiles
+
+A **Nighttime** profile ships with the app (in `default-profiles.json`) and is
+always available under "Set existing profile". You can edit it — your changes are
+saved as a personal override and take precedence; deleting the override reverts to
+the built-in. The built-in itself can't be deleted.
 
 ## One-off commands (optional)
 

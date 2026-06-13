@@ -1,0 +1,13 @@
+{
+  "Nighttime": {
+    "brightness": -6,
+    "contrast": 0,
+    "hue": 4,
+    "saturation": 4,
+    "sharpness": 12,
+    "gamma": 4,
+    "backlight": 5,
+    "wb": 0,
+    "wbAuto": true
+  }
+}

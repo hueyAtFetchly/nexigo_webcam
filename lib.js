@@ -12,7 +12,8 @@ const fs = require('fs');
 const path = require('path');
 
 const UVC = path.join(__dirname, 'bin', 'uvc-util');
-const PROFILES_FILE = path.join(__dirname, 'profiles.json');
+const PROFILES_FILE = path.join(__dirname, 'profiles.json');                  // personal, git-ignored
+const DEFAULT_PROFILES_FILE = path.join(__dirname, 'default-profiles.json');  // shipped, committed
 
 // The eight image controls we expose, in display order.
 // `name`  — the uvc-util control name
@@ -118,13 +119,29 @@ function resetAll(index) {
 
 // ---- profiles --------------------------------------------------------------
 
-function loadProfiles() {
-  try { return JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8')); }
+function readJSON(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
   catch { return {}; }
 }
 
-function saveProfiles(profiles) {
-  fs.writeFileSync(PROFILES_FILE, JSON.stringify(profiles, null, 2) + '\n');
+// Built-in profiles shipped with the tool (committed to the repo).
+function loadDefaultProfiles() { return readJSON(DEFAULT_PROFILES_FILE); }
+
+// The user's own profiles (profiles.json, git-ignored). Saving/deleting touches
+// only this file — built-in defaults are never modified.
+function loadUserProfiles() { return readJSON(PROFILES_FILE); }
+function saveProfiles(userProfiles) {
+  fs.writeFileSync(PROFILES_FILE, JSON.stringify(userProfiles, null, 2) + '\n');
+}
+
+// What every consumer sees: defaults, with the user's own profiles taking
+// precedence when names collide.
+function loadProfiles() {
+  return { ...loadDefaultProfiles(), ...loadUserProfiles() };
+}
+
+function isDefaultProfile(name) {
+  return name in loadDefaultProfiles();
 }
 
 // Snapshot current camera state as a profile (centered values + wb-auto flag).
@@ -160,6 +177,7 @@ module.exports = {
   UVC, PROFILES_FILE, CONTROLS, byKey, byName,
   resolveControl, uvc, findCameraIndex, describe,
   toRaw, toCentered, isAutoOn, setCentered, setAuto, resetAll,
-  loadProfiles, saveProfiles, captureProfile, applyProfile,
+  loadProfiles, loadUserProfiles, loadDefaultProfiles, isDefaultProfile,
+  saveProfiles, captureProfile, applyProfile,
   pad, padl,
 };

@@ -12,7 +12,8 @@
 const L = require('./lib');
 const { CONTROLS, resolveControl, uvc, findCameraIndex, describe,
         toRaw, toCentered, isAutoOn, setAuto, resetAll,
-        loadProfiles, saveProfiles, captureProfile, applyProfile, pad } = L;
+        loadProfiles, loadUserProfiles, isDefaultProfile,
+        saveProfiles, captureProfile, applyProfile, pad } = L;
 
 function cmdList(index) {
   console.log(`Camera index ${index}\n`);
@@ -106,7 +107,7 @@ function cmdReset(index, tokens) {
 function cmdSave(index, tokens) {
   const name = tokens[0];
   if (!name) { console.error('usage: nexicam save <name>'); process.exitCode = 1; return; }
-  const profiles = loadProfiles();
+  const profiles = loadUserProfiles();
   profiles[name] = captureProfile(index);
   saveProfiles(profiles);
   console.log(`Saved current settings as "${name}".`);
@@ -138,18 +139,26 @@ function cmdProfiles() {
       const v = p[c.key];
       return `${c.key}=${v > 0 ? '+' : ''}${v}`;
     });
-    console.log(`  ${pad(name, 14)} ${parts.join('  ')}`);
+    const tag = isDefaultProfile(name) ? '* ' : '  ';
+    console.log(`${tag}${pad(name, 14)} ${parts.join('  ')}`);
   }
 }
 
 function cmdDelete(tokens) {
   const name = tokens[0];
   if (!name) { console.error('usage: nexicam delete <name>'); process.exitCode = 1; return; }
-  const profiles = loadProfiles();
-  if (!(name in profiles)) { console.error(`no profile named "${name}".`); process.exitCode = 1; return; }
-  delete profiles[name];
-  saveProfiles(profiles);
-  console.log(`Deleted profile "${name}".`);
+  const user = loadUserProfiles();
+  const hadUserCopy = name in user;
+  if (!hadUserCopy && !isDefaultProfile(name)) { console.error(`no profile named "${name}".`); process.exitCode = 1; return; }
+  delete user[name];
+  saveProfiles(user);
+  if (isDefaultProfile(name)) {
+    console.log(hadUserCopy
+      ? `Removed your custom "${name}" — reverted to the built-in default.`
+      : `"${name}" is a built-in default and can't be deleted.`);
+  } else {
+    console.log(`Deleted profile "${name}".`);
+  }
 }
 
 function usage() {

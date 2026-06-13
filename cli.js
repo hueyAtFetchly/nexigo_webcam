@@ -17,7 +17,8 @@ const readline = require('readline');
 const L = require('./lib');
 const {
   CONTROLS, describe, toCentered, isAutoOn, setCentered, resetAll,
-  findCameraIndex, loadProfiles, saveProfiles, captureProfile, applyProfile, pad,
+  findCameraIndex, loadProfiles, loadUserProfiles, isDefaultProfile,
+  saveProfiles, captureProfile, applyProfile, pad,
 } = L;
 
 // ---- terminal / key plumbing ----------------------------------------------
@@ -123,7 +124,7 @@ async function chooseProfile(index, title) {
     await pause('  No profiles saved yet. Use "Create new profile" first.');
     return null;
   }
-  names.forEach((n, i) => W(`  ${cyan(String(i + 1))}  ${n}\n`));
+  names.forEach((n, i) => W(`  ${cyan(String(i + 1))}  ${n}${isDefaultProfile(n) ? dim('  (built-in)') : ''}\n`));
   W(dim('\n  Pick a number (or Q to go back): '));
   for (;;) {
     const { str, key } = await nextKey();
@@ -149,12 +150,19 @@ async function setExistingProfile(index) {
 async function deleteProfile(index) {
   const choice = await chooseProfile(index, 'Delete a profile');
   if (!choice) return;
-  const profiles = loadProfiles();
-  delete profiles[choice.name];
-  saveProfiles(profiles);
+  const user = loadUserProfiles();
+  const hadUserCopy = choice.name in user;
+  delete user[choice.name];
+  saveProfiles(user);
   clear();
   W(bold('  Delete a profile\n\n'));
-  W(green(`  Deleted "${choice.name}".\n`));
+  if (isDefaultProfile(choice.name)) {
+    W(hadUserCopy
+      ? green(`  Removed your custom "${choice.name}" — reverted to the built-in default.\n`)
+      : dim(`  "${choice.name}" is a built-in default and can't be deleted.\n`));
+  } else {
+    W(green(`  Deleted "${choice.name}".\n`));
+  }
   await pause();
 }
 
@@ -229,7 +237,7 @@ async function runProfileEditor(index, name, isNew) {
       return;
     }
     if (str && /[sS]/.test(str)) {
-      const profiles = loadProfiles();
+      const profiles = loadUserProfiles();
       profiles[name] = captureProfile(index);
       saveProfiles(profiles);
       resetAll(index);
