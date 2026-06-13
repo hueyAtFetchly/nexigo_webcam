@@ -1,0 +1,14 @@
+{
+  "name": "nexicam",
+  "version": "1.0.0",
+  "description": "Direct UVC hardware control for the NexiGo N680E webcam (bypasses the App Store app)",
+  "bin": {
+    "nexicam": "nexicam.js"
+  },
+  "scripts": {
+    "start": "node cli.js",
+    "list": "node nexicam.js list"
+  },
+  "license": "MIT",
+  "private": true
+}

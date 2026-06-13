@@ -1,0 +1,9 @@
+# Persistent local settings — saved camera profiles
+profiles.json
+
+# Node
+node_modules/
+npm-debug.log*
+
+# macOS
+.DS_Store
